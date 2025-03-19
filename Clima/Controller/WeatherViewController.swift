@@ -19,6 +19,10 @@ class WeatherViewController: UIViewController {
     var weatherManager = WeatherManager()
     var locationManager = CLLocationManager()
     
+    @IBAction func onUserLocationPressed(_ sender: UIButton) {
+        locationManager.requestLocation()
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -59,6 +63,7 @@ extension WeatherViewController: CLLocationManagerDelegate{
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         if let safeLocation = locations.last{
+            locationManager.stopUpdatingLocation()
             let lat = safeLocation.coordinate.latitude
             let long = safeLocation.coordinate.longitude
             weatherManager.fetchWeather(lat: lat, long: long)
