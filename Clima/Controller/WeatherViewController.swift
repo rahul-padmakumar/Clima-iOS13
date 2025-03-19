@@ -7,8 +7,9 @@
 //
 
 import UIKit
+import CoreLocation
 
-class WeatherViewController: UIViewController, UITextFieldDelegate, WeatherManagerDelegate {
+class WeatherViewController: UIViewController {
 
     @IBOutlet weak var conditionImageView: UIImageView!
     @IBOutlet weak var temperatureLabel: UILabel!
@@ -16,28 +17,66 @@ class WeatherViewController: UIViewController, UITextFieldDelegate, WeatherManag
     @IBOutlet weak var cityLabel: UILabel!
     
     var weatherManager = WeatherManager()
+    var locationManager = CLLocationManager()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         searchTF.delegate = self
         weatherManager.delegate = self
+        locationManager.delegate = self
+    
+        requestLocationPermission()
+    }
+    
+    func requestLocationPermission(){
+        if #available(iOS 14.0, *) {
+            let status = locationManager.authorizationStatus
+            switch status{
+            case .authorizedAlways, .authorizedWhenInUse:
+                locationManager.requestLocation()
+            default:
+                locationManager.requestWhenInUseAuthorization()
+            }
+        } else {
+            locationManager.requestWhenInUseAuthorization()
+        }
     }
     
     @IBAction func onSearchPressed(_ sender: UIButton) {
         search()
     }
-    
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        search()
-        return true
-    }
-    
+
     func search(){
         print(searchTF.text!)
         searchTF.endEditing(true)
     }
+}
+
+// Mark - CLLocationManager
+
+extension WeatherViewController: CLLocationManagerDelegate{
     
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let safeLocation = locations.last{
+            let lat = safeLocation.coordinate.latitude
+            let long = safeLocation.coordinate.longitude
+            weatherManager.fetchWeather(lat: lat, long: long)
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: any Error) {
+        print("Location error")
+    }
+}
+
+// Mark - UITextFieldDelegate
+
+extension WeatherViewController: UITextFieldDelegate{
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        search()
+        return true
+    }
     func textFieldDidEndEditing(_ textField: UITextField) {
         if let place = searchTF.text{
             weatherManager.fetchWeather(place: place)
@@ -53,9 +92,21 @@ class WeatherViewController: UIViewController, UITextFieldDelegate, WeatherManag
             return true
         }
     }
+}
+
+// Mark - WeatherManagerDelegate
+
+extension WeatherViewController: WeatherManagerDelegate{
+    func updateWeather(_ data: WeatherUIModel) {
+        DispatchQueue.main.async {
+            self.temperatureLabel.text = data.temperatureName
+            self.cityLabel.text = data.cityName
+            self.conditionImageView.image = UIImage(systemName: data.conditionName)
+        }
+    }
     
-    func updateWeather(data: WeatherUIModel) {
-        print(data.cityName)
+    func didErrorOccurred(_ error: any Error) {
+        print(error)
     }
 }
 
